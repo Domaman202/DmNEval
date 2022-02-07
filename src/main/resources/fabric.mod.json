@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "modid",
+  "id": "dmneval",
   "version": "${version}",
 
   "name": "DmNEval",
