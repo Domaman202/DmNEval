@@ -18,11 +18,18 @@ public class Main implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> {
-            dispatcher.register(literal("eval").then(argument("code", StringArgumentType.greedyString()).executes(context -> {
+        CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> dispatcher.register(literal("eval").then(argument("code", StringArgumentType.greedyString()).executes(context -> {
+            try {
+                gb.setProperty("context", context);
                 context.getSource().sendFeedback(new LiteralText(gs.evaluate(context.getArgument("code", String.class)).toString()), false);
-                return 1;
-            })));
-        });
+            } catch (Exception e) {
+                context.getSource().sendFeedback(new LiteralText(e.toString()), false);
+                e.printStackTrace();
+            }
+            return 1;
+        }))));
     }
 }
+
+//context.getSource().getPlayer().getMainHandStack().getNbt().putString("");
+//context.getSource().method_9207().method_6047().method_7969().method_10582("author", "Subject485")
