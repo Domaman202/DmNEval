@@ -8,6 +8,8 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
 import net.minecraft.text.LiteralText;
 
+import java.util.Objects;
+
 import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandManager.literal;
 
@@ -18,16 +20,25 @@ public class Main implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> dispatcher.register(literal("eval").then(argument("code", StringArgumentType.greedyString()).executes(context -> {
-            try {
-                gb.setProperty("context", context);
-                context.getSource().sendFeedback(new LiteralText(gs.evaluate(context.getArgument("code", String.class)).toString()), false);
-            } catch (Exception e) {
-                context.getSource().sendFeedback(new LiteralText(e.toString()), false);
-                e.printStackTrace();
-            }
-            return 1;
-        }))));
+        CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> {
+            dispatcher.register(literal("eval").then(argument("code", StringArgumentType.greedyString()).executes(context -> {
+                try {
+                    gb.setProperty("context", context);
+                    gb.setProperty("cprint_", (IPrint) obj -> context.getSource().sendFeedback(new LiteralText(Objects.toString(obj)), false)); // void cprint(input) { ((ru.DmN.eval.Main.IPrint) cprint_).print(input) }
+                    gb.setProperty("cprint", gs.evaluate("(input) -> ((ru.DmN.eval.Main.IPrint) cprint_).print(input)"));
+                    context.getSource().sendFeedback(new LiteralText(Objects.toString(gs.evaluate(context.getArgument("code", String.class)))), false);
+                } catch (Exception e) {
+                    context.getSource().sendFeedback(new LiteralText(e.toString()), false);
+                    e.printStackTrace();
+                }
+                return 1;
+            })));
+        });
+    }
+
+    @FunctionalInterface
+    public interface IPrint {
+        void print(Object obj);
     }
 }
 
