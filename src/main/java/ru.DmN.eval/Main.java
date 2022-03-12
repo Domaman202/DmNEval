@@ -1,11 +1,15 @@
 package ru.DmN.eval;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
 import groovy.lang.Binding;
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyShell;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtString;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.LiteralText;
 
 import java.util.Objects;
@@ -22,18 +26,35 @@ public class Main implements ModInitializer {
     public void onInitialize() {
         CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> {
             dispatcher.register(literal("eval").then(argument("code", StringArgumentType.greedyString()).executes(context -> {
-                try {
-                    gb.setProperty("context", context);
-                    gb.setProperty("cprint_", (IPrint) obj -> context.getSource().sendFeedback(new LiteralText(Objects.toString(obj)), false)); // void cprint(input) { ((ru.DmN.eval.Main.IPrint) cprint_).print(input) }
-                    gb.setProperty("cprint", gs.evaluate("(input) -> ((ru.DmN.eval.Main.IPrint) cprint_).print(input)"));
-                    context.getSource().sendFeedback(new LiteralText(Objects.toString(gs.evaluate(context.getArgument("code", String.class)))), false);
-                } catch (Exception e) {
-                    context.getSource().sendFeedback(new LiteralText(e.toString()), false);
-                    e.printStackTrace();
-                }
+                eval(context, context.getArgument("code", String.class));
                 return 1;
             })));
+            dispatcher.register(literal("evalb").executes(context -> {
+                try {
+                    var sb = new StringBuilder();
+                    var nbt = (NbtList) context.getSource().getPlayer().getMainHandStack().getNbt().get("pages");
+                    for (var e : nbt)
+                        sb.append(e.asString().replace("\n", "")).append('\n');
+                    sb.deleteCharAt(sb.length() - 1);
+                    eval(context, sb.toString());
+                } catch (Exception e) {
+                    context.getSource().sendFeedback(new LiteralText("Error!"), false);
+                }
+                return 1;
+            }));
         });
+    }
+
+    public static void eval(CommandContext<ServerCommandSource> context, String code) {
+        try {
+            gb.setProperty("context", context);
+            gb.setProperty("cprint_", (IPrint) obj -> context.getSource().sendFeedback(new LiteralText(Objects.toString(obj)), false)); // void cprint(input) { ((ru.DmN.eval.Main.IPrint) cprint_).print(input) }
+            gb.setProperty("cprint", gs.evaluate("(input) -> ((ru.DmN.eval.Main.IPrint) cprint_).print(input)"));
+            context.getSource().sendFeedback(new LiteralText(Objects.toString(gs.evaluate(code))), false);
+        } catch (Throwable t) {
+            context.getSource().sendFeedback(new LiteralText(t.toString()), false);
+            t.printStackTrace();
+        }
     }
 
     @FunctionalInterface
